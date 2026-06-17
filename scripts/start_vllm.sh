@@ -28,6 +28,7 @@ case "$PROFILE" in
         --gpu-memory-utilization 0.95 \
         --max-num-seqs 64 \
         --enable-chunked-prefill \
+        --trust-remote-code \
         --disable-log-requests
     ;;
 
