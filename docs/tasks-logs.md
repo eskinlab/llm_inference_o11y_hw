@@ -163,7 +163,7 @@ Key design decisions:
 - [x] Diagnosis: vLLM queue=0; bottleneck is agent chaining 2-3 sequential 4s LLM calls
 - [x] Change: `--max-num-seqs 64 → 128` — P95 dropped to 66s, timeouts 423 → 9
 - [x] Root cause documented: SLO requires <5s but minimum agent latency is ~8s (2 sequential LLM calls)
-- [x] Screenshots: `screenshots/grafana_before.png`, `screenshots/grafana_after.png`
+- [x] Screenshots: `screenshots/grafana_before_1.png`, `screenshots/grafana_before_2.png`, `screenshots/grafana_after_1.png`, `screenshots/grafana_after_2.png`
 - [x] Post-tuning eval: 33.3% pass rate — quality survived
 - [x] `REPORT.md` Section 5 filled
 
@@ -174,3 +174,5 @@ Key design decisions:
 - [x] All 7 sections complete with real H100 numbers
 - [x] No TODOs remaining
 - [x] `results/*.json` added to repo (removed from `.gitignore`)
+- [x] `screenshots/*.png` added to repo (removed from `.gitignore`)
+- [x] Screenshot naming standardized to `_1`/`_2` pattern across all phases
