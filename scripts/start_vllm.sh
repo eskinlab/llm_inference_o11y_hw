@@ -28,7 +28,6 @@ case "$PROFILE" in
         --gpu-memory-utilization 0.95 \
         --max-num-seqs 64 \
         --enable-chunked-prefill \
-        --enable-automatic-prefix-caching \
         --disable-log-requests
     ;;
 
@@ -44,7 +43,6 @@ case "$PROFILE" in
         --gpu-memory-utilization 0.85 \
         --max-num-seqs 16 \
         --enable-chunked-prefill \
-        --enable-automatic-prefix-caching \
         --disable-log-requests
     ;;
 
