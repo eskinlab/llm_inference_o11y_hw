@@ -134,67 +134,43 @@ Key design decisions:
 
 ---
 
-## Phase 1 — vLLM (H100 only) ⏳
+## Phase 1 — vLLM (H100 only) ✅
 
-*To be done after booking H100 slot.*
-
----
-
-## Phase 2 — Grafana Dashboard (H100 only) ⏳
-
-*Requires vLLM `/metrics` — build and validate on H100.*
-
----
-
-## Phase 6 — SLO Tuning (H100 only) ⏳
-
----
-
-## Phase 7 — Report ⏳
+- [x] Nebius Cloud VM created — Ubuntu 22.04 LTS + CUDA 12, H100 80 GB, 300 GB SSD
+- [x] SSH key configured, port forwarding active (3000, 9090, 3001, 8000, 8001)
+- [x] `uv sync --python 3.12` — fixed transformers 5.x incompatibility, pinned `<5.0.0`
+- [x] `.env` configured: `VLLM_BASE_URL`, `VLLM_MODEL`, `HF_TOKEN`
+- [x] `docker compose up -d` — all 8 containers healthy
+- [x] vLLM serving `Qwen3-30B-A3B-Instruct-2507` at port 8000
+- [x] Prometheus scraping confirmed
+- [x] Manual queries returning valid SQL
+- [x] `REPORT.md` Section 1 filled — final config: `--max-num-seqs 128` after load test tuning
+- [x] Screenshot: `screenshots/vllm_manual_query.png`
 
 ---
 
-## Preparing to H100 (after local run)
+## Phase 2 — Grafana Dashboard (H100 only) ✅
 
-### Before H100 (do now)
-
-- [ ] **Fix `agent/server.py:27`** — wrong Langfuse import: `langfuse.langchain` → `langfuse.callback`. File was never saved after the fix noted in Phase 4 log.
-
-- [ ] **Build out Grafana dashboard** (`infra/grafana/provisioning/dashboards/serving.json`) — currently only 2 panels. Add 6 more covering all 3 required categories:
-  - **Latency**: E2E latency P50/P95/P99 + TTFT P50/P95
-    - `histogram_quantile(0.95, rate(vllm:e2e_request_latency_seconds_bucket[1m]))`
-    - `histogram_quantile(0.95, rate(vllm:time_to_first_token_seconds_bucket[1m]))`
-  - **Throughput**: requests waiting (queue depth) + request completion rate
-    - `vllm:num_requests_waiting`
-    - `rate(vllm:e2e_request_latency_seconds_count[1m])`
-    - `rate(vllm:prompt_tokens_total[1m])`
-  - **KV cache**: `vllm:gpu_cache_usage_perc * 100`
-
-- [ ] **Write tuned `scripts/start_vllm.sh`** — current script has zero optimization flags. Flags for Qwen3-30B-A3B (MoE, ~3B activated) on H100 80 GB:
-  - `--dtype bfloat16` — H100 native format
-  - `--max-model-len 8192` — covers 1.5-3K prompts + short SQL outputs; smaller than default leaves more KV slots
-  - `--gpu-memory-utilization 0.95` — model weights ~16 GB bf16, ~60 GB left for KV cache
-  - `--max-num-seqs 64` — MoE with 3B activated params batches cheaply
-  - `--enable-chunked-prefill` — prevents long prefill bursts from blocking decode; critical for P95 under concurrent load
-  - `--enable-automatic-prefix-caching` — many queries share the same DB schema prefix; KV reuse cuts TTFT on repeated DB calls
-  - `--disable-log-requests` — reduces logging overhead at 10+ RPS
-
-- [ ] **Create `REPORT.md` skeleton** — stub out all 7 sections so on H100 we fill in numbers, not structure.
+- [x] 8 panels built: E2E latency P50/P95/P99, TTFT P50/P95, requests running/waiting, completion rate, generated tokens/sec, GPU KV cache
+- [x] All panels confirmed reacting under load (burst of 20 parallel requests)
+- [x] Screenshots: `screenshots/grafana_serving_1.png`, `screenshots/grafana_serving_2.png`
 
 ---
 
-### On H100 (ordered — do not skip steps)
+## Phase 6 — SLO Tuning (H100 only) ✅
 
-| Step | Command / Action | Artifact |
-|---|---|---|
-| 1 | `git clone` + `uv sync` + `docker compose up -d` + forward 5 ports (3000, 9090, 3001, 8000, 8001) | — |
-| 2 | `bash scripts/start_vllm.sh` — wait for model to load (~3-5 min), confirm `/health` responds | — |
-| 3 | Manual curl 3-5 queries from `evals/eval_set.jsonl`, confirm SQL output looks reasonable | `screenshots/vllm_manual_query.png` |
-| 4 | Start agent: `uvicorn agent.server:app --host 0.0.0.0 --port 8001` | — |
-| 5 | Fire a few `/answer` requests, confirm all Grafana panels react to load | `screenshots/grafana_serving.png` |
-| 6 | `uv run python evals/run_eval.py` (30 q × ~2 LLM calls ≈ 60 vLLM requests) — watch Grafana while running | `screenshots/grafana_eval_run.png`, `results/eval_baseline.json` |
-| 7 | `uv run python load_test/driver.py --rps 10 --duration 300` — watch Grafana, note which metric moves first | `screenshots/grafana_before.png` |
-| 8 | Diagnose bottleneck from dashboard, change **one** vLLM flag, restart vLLM | — |
-| 9 | Re-run load test, confirm targeted metric moved and P95 latency followed | `screenshots/grafana_after.png` |
-| 10 | `uv run python evals/run_eval.py --out results/eval_after_tuning.json` — verify quality survived | `results/eval_after_tuning.json` |
-| 11 | Fill REPORT.md: numbers, iteration log ("saw X → hypothesized Y → changed Z → result W"), verdict | `REPORT.md` |
+- [x] Baseline load test: P95=117s, 423 timeouts — SLO missed
+- [x] Diagnosis: vLLM queue=0; bottleneck is agent chaining 2-3 sequential 4s LLM calls
+- [x] Change: `--max-num-seqs 64 → 128` — P95 dropped to 66s, timeouts 423 → 9
+- [x] Root cause documented: SLO requires <5s but minimum agent latency is ~8s (2 sequential LLM calls)
+- [x] Screenshots: `screenshots/grafana_before.png`, `screenshots/grafana_after.png`
+- [x] Post-tuning eval: 33.3% pass rate — quality survived
+- [x] `REPORT.md` Section 5 filled
+
+---
+
+## Phase 7 — Report ✅
+
+- [x] All 7 sections complete with real H100 numbers
+- [x] No TODOs remaining
+- [x] `results/*.json` added to repo (removed from `.gitignore`)
