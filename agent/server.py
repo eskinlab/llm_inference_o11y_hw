@@ -24,7 +24,7 @@ from agent.graph import AgentState, graph  # noqa: E402
 # produce zero traces.
 _lf_handler: Any = None
 if os.environ.get("LANGFUSE_PUBLIC_KEY") and os.environ.get("LANGFUSE_SECRET_KEY"):
-    from langfuse.callback import CallbackHandler
+    from langfuse.langchain import CallbackHandler
 
     _lf_handler = CallbackHandler()
 
