@@ -91,7 +91,7 @@ Eval method: execution accuracy — run agent SQL and gold SQL against the same 
 | P99 latency | 119.8s |
 | Timeouts | 423 / 3000 (14%) |
 
-Screenshot: `screenshots/grafana_before.png`
+Screenshots: `screenshots/grafana_before_1.png`, `screenshots/grafana_before_2.png`
 
 **Iteration log:**
 
@@ -99,7 +99,7 @@ Screenshot: `screenshots/grafana_before.png`
 |---|---|---|---|---|
 | 1 | P95=117s, requests_waiting=0, 423 timeouts | vLLM queue is empty — bottleneck is agent server piling up 2-3 sequential LLM calls (~4s each) per request; increasing batch size may reduce per-call latency | `--max-num-seqs 64 → 128` | P95: 117s → 66s, timeouts: 423 → 9 |
 
-Screenshot: `screenshots/grafana_after.png`
+Screenshots: `screenshots/grafana_after_1.png`, `screenshots/grafana_after_2.png`
 
 **Root cause:** The SLO requires P95 < 5s but each agent run chains 2 sequential LLM calls (~4s each on H100) = minimum ~8s per request with zero queuing. No vLLM configuration change can close this gap — it is architectural.
 
