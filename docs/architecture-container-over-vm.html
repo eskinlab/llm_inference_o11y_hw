@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MLOps Assignment — Architecture</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background: #0d1117;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #c9d1d9;
+    }
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      color: #8b949e;
+      margin-bottom: 2rem;
+      text-transform: uppercase;
+    }
+    .mermaid {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 2.5rem 3rem;
+      max-width: 900px;
+      width: 90%;
+    }
+  </style>
+</head>
+<body>
+  <h1>System Architecture — Nebius Cloud vLLM</h1>
+
+  <div class="mermaid">
+flowchart TD
+    subgraph LOCAL["🖥️  Local Machine  (WSL2)"]
+        direction TB
+        CLIENT["👤 Client\ncurl / smoke_tests / load_test"]
+        AGENT["⚙️ Agent Server\nuvicorn  :8001\n\nLangGraph · text-to-SQL"]
+
+        subgraph DOCKER["🐳 Docker Compose"]
+            direction LR
+            PROM["📈 Prometheus\n:9090"]
+            GRAFANA["📊 Grafana\n:3000"]
+            LANGFUSE["🔍 Langfuse\n:3001"]
+            BACKEND["🗄️ Postgres · ClickHouse\nRedis · MinIO"]
+        end
+
+        GRAFANA -->|"query"| PROM
+        LANGFUSE -->|"store"| BACKEND
+    end
+
+    subgraph NEBIUS["☁️  Nebius Cloud — Container over VM (GPU)"]
+        VLLM["🤖 vLLM  :8000\nQwen / Qwen3-30B-A3B"]
+    end
+
+    CLIENT -->|"POST /answer"| AGENT
+    AGENT -->|"chat completions\nVLLM_BASE_URL"| VLLM
+    AGENT -->|"traces"| LANGFUSE
+    PROM  -->|"scrape /metrics\nevery 5 s"| VLLM
+
+    style LOCAL  fill:#161b22,stroke:#30363d,color:#c9d1d9
+    style DOCKER fill:#0d1117,stroke:#21262d,color:#c9d1d9
+    style NEBIUS fill:#0c2d48,stroke:#1f6feb,color:#c9d1d9
+    style CLIENT  fill:#21262d,stroke:#388bfd,color:#e6edf3
+    style AGENT   fill:#21262d,stroke:#3fb950,color:#e6edf3
+    style PROM    fill:#21262d,stroke:#e3b341,color:#e6edf3
+    style GRAFANA fill:#21262d,stroke:#f78166,color:#e6edf3
+    style LANGFUSE fill:#21262d,stroke:#a371f7,color:#e6edf3
+    style BACKEND fill:#21262d,stroke:#8b949e,color:#e6edf3
+    style VLLM    fill:#1c3a5e,stroke:#1f6feb,color:#e6edf3
+  </div>
+</body>
+</html>

@@ -68,9 +68,9 @@ Eval method: execution accuracy — run agent SQL and gold SQL against the same 
 | Metric | Value |
 |---|---|
 | Overall pass rate | 30.0% |
-| Pass rate @ iter 0 (generate only) | 30.0% |
-| Pass rate @ iter 1 (after 1st revise) | 30.0% |
-| Pass rate @ iter 2 (after 2nd revise) | 30.0% |
+| Pass rate at iter 0 (generate only) | 30.0% |
+| Pass rate at iter 1 (after 1st revise) | 30.0% |
+| Pass rate at iter 2 (after 2nd revise) | 30.0% |
 | Mean iterations | 1.27 |
 
 **Loop value:** all three iterations identical at 30% — the revise loop triggered on ~27% of questions (inferred from mean_iterations=1.27) but fixed zero of them. The verifier is firing but revise is regenerating structurally similar SQL rather than rethinking the approach. Net gain from the loop: 0 pp on H100.

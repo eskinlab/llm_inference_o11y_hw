@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LLM Inference + Observability — Stack Architecture</title>
+  <style>
+    body { font-family: monospace; background: #1e1e2e; color: #cdd6f4; margin: 0; padding: 24px; }
+    h1 { color: #cba6f7; margin-bottom: 32px; font-size: 1.4em; }
+
+    .diagram { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; }
+
+    .box {
+      border: 2px solid;
+      border-radius: 8px;
+      padding: 16px;
+      min-width: 180px;
+    }
+    .box-title {
+      font-weight: bold;
+      font-size: 0.85em;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid currentColor;
+    }
+    .service {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      font-size: 0.85em;
+    }
+    .port {
+      font-size: 0.75em;
+      opacity: 0.7;
+      margin-left: 8px;
+      white-space: nowrap;
+    }
+
+    /* Local machine */
+    .local { border-color: #89dceb; }
+    .local .box-title { color: #89dceb; }
+    .local .service { background: #1a2e38; }
+
+    /* VM outer */
+    .vm { border-color: #a6e3a1; }
+    .vm .box-title { color: #a6e3a1; }
+
+    /* vLLM */
+    .vllm-box { border-color: #f38ba8; margin-bottom: 12px; }
+    .vllm-box .box-title { color: #f38ba8; }
+    .vllm-box .service { background: #2e1a1e; }
+
+    /* Agent */
+    .agent-box { border-color: #fab387; margin-bottom: 12px; }
+    .agent-box .box-title { color: #fab387; }
+    .agent-box .service { background: #2e2118; }
+
+    /* Docker */
+    .docker-box { border-color: #89b4fa; }
+    .docker-box .box-title { color: #89b4fa; }
+    .docker-box .service { background: #1a1e2e; }
+
+    /* Arrows */
+    .arrows { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px; padding-top: 40px; }
+    .arrow { color: #6c7086; font-size: 1.2em; }
+    .arrow-label { font-size: 0.7em; color: #6c7086; white-space: nowrap; }
+
+    .vm-inner { padding: 12px; }
+
+    .ssh-note {
+      margin-top: 24px;
+      border: 1px dashed #6c7086;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 0.8em;
+      color: #a6adc8;
+      max-width: 860px;
+    }
+    .ssh-note span { color: #cba6f7; }
+
+    .legend { margin-top: 24px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.78em; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+  </style>
+</head>
+<body>
+
+<h1>LLM Inference + Observability — Stack Architecture</h1>
+<p style="color:#a6adc8; font-size:0.85em; margin-top:-16px;">Text-to-SQL agent on H100 · vLLM + LangGraph + Langfuse + Prometheus/Grafana</p>
+
+<div class="diagram">
+
+  <!-- Local Machine -->
+  <div class="box local">
+    <div class="box-title">Local Machine (Windows/WSL)</div>
+    <div class="service">Browser</div>
+    <div class="service">SSH client
+      <span class="port">+ port forward</span>
+    </div>
+    <div class="service">VS Code / Cursor</div>
+  </div>
+
+  <!-- Arrow -->
+  <div class="arrows">
+    <div class="arrow">⟷</div>
+    <div class="arrow-label">SSH tunnel</div>
+    <div class="arrow-label">3000 / 9090</div>
+    <div class="arrow-label">3001 / 8000</div>
+    <div class="arrow-label">8001</div>
+  </div>
+
+  <!-- VM -->
+  <div class="box vm">
+    <div class="box-title">Nebius Cloud VM · H100 80 GB · Ubuntu 22.04 + CUDA 12</div>
+    <div class="vm-inner">
+
+      <!-- vLLM -->
+      <div class="box vllm-box">
+        <div class="box-title">vLLM 0.10.x</div>
+        <div class="service">Qwen3-30B-A3B-Instruct-2507
+          <span class="port">:8000</span>
+        </div>
+        <div class="service">OpenAI-compatible API
+          <span class="port">/v1/chat/completions</span>
+        </div>
+        <div class="service">Prometheus metrics
+          <span class="port">/metrics</span>
+        </div>
+      </div>
+
+      <!-- Agent Server -->
+      <div class="box agent-box">
+        <div class="box-title">Agent Server (FastAPI + LangGraph)</div>
+        <div class="service">uvicorn
+          <span class="port">:8001</span>
+        </div>
+        <div class="service">generate_sql → execute → verify → revise</div>
+        <div class="service">Langfuse callback handler</div>
+      </div>
+
+      <!-- Docker Stack -->
+      <div class="box docker-box">
+        <div class="box-title">Docker Compose — o11y stack</div>
+        <div class="service">Grafana
+          <span class="port">:3000</span>
+        </div>
+        <div class="service">Prometheus
+          <span class="port">:9090</span>
+        </div>
+        <div class="service">Langfuse Web
+          <span class="port">:3001</span>
+        </div>
+        <div class="service">Langfuse Worker
+          <span class="port">:3030</span>
+        </div>
+        <div class="service">Postgres
+          <span class="port">:5432</span>
+        </div>
+        <div class="service">ClickHouse
+          <span class="port">:8123</span>
+        </div>
+        <div class="service">Redis
+          <span class="port">:6379</span>
+        </div>
+        <div class="service">MinIO
+          <span class="port">:9000</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="ssh-note">
+  <span>SSH tunnel command:</span><br><br>
+  ssh -i ~/.ssh/id_ed25519
+  -L 3000:localhost:3000
+  -L 9090:localhost:9090
+  -L 3001:localhost:3001
+  -L 8000:localhost:8000
+  -L 8001:localhost:8001
+  didger@195.242.31.193
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#f38ba8"></div> GPU inference (vLLM)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fab387"></div> Agent logic (LangGraph)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#89b4fa"></div> Observability (Docker)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#89dceb"></div> Local client</div>
+</div>
+
+</body>
+</html>
